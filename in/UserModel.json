@@ -1,0 +1,5 @@
+{
+  "ID": "int",
+  "Username": "string",
+  "IsAdmin": "bool"
+}

@@ -1,0 +1,39 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Dependency directories (remove the comment below if you want to ignore them)
+# vendor/
+
+# Output of the go coverage tool
+*.cover
+
+# Profile outputs
+*.out
+
+# Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
+.glide/
+
+# JetBrains IDEs
+.idea/
+
+# VSCode
+.vscode/
+
+# macOS specific files
+.DS_Store
+
+# Windows specific files
+Thumbs.db
+
+# GoLand
+.goland*/
+
+# Temporary files
+tmp
+temp
