@@ -3,43 +3,43 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// StructField represents a single field in your struct
+// StructField examples: { "Name": "ID", "Type": "int" } - { "Name": "Username", "Type": "string" }
 type StructField struct {
 	Name string
 	Type string
 }
 
-// ReadJSONAndPreserveOrder reads the JSON file and returns an ordered list of StructField
-func ReadJSONAndPreserveOrder(filename string) ([]StructField, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+// processJSONLine input example: "ID": "int",
+func processJSONLine(line string) (string, string) {
+	line = strings.Trim(line, " ,{}")
 
+	if len(line) < 3 {
+		return "", "" // not a valid line
+	}
+
+	parts := strings.Split(line, ":")
+	if len(parts) != 2 {
+		return "", "" // not a valid line
+	}
+
+	return strings.Trim(parts[0], " \""), strings.Trim(parts[1], " \"")
+}
+
+// FromJSONFileToStructFields reads a JSON file and returns an ordered list of StructFields
+func FromJSONFileToStructFields(file *os.File) ([]StructField, error) {
 	var fields []StructField
 	scanner := bufio.NewScanner(file)
+
 	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.Trim(line, " ,{}")
-		if line == "" {
-			continue
-		}
-
-		parts := strings.Split(line, ":")
-		if len(parts) != 2 {
-			continue // not a valid line
-		}
-
-		name := strings.Trim(parts[0], " \"")
-		fieldType := strings.Trim(parts[1], " \"")
-		fields = append(fields, StructField{Name: name, Type: fieldType})
+		fieldName, fieldType := processJSONLine(scanner.Text())
+		fields = append(fields, StructField{Name: fieldName, Type: fieldType})
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -65,37 +65,63 @@ func WriteToFile(filename, content string) error {
 	return ioutil.WriteFile(filename, []byte(content), 0644)
 }
 
+func ReadInputFiles() []os.DirEntry {
+	if files, err := os.ReadDir("in"); err == nil {
+		return files
+	}
+
+	os.Exit(1)
+	return nil
+}
+
+const (
+	outputFilename = "out/out.go"
+)
+
+func WriteOutputFile(generatedCode strings.Builder) {
+	if err := WriteToFile(outputFilename, generatedCode.String()); err != nil {
+		fmt.Println("Error writing to ", outputFilename, ":", err)
+		os.Exit(1)
+	}
+}
+
+func GetFilePath(inputFile fs.DirEntry) string {
+	return filepath.Join("in", inputFile.Name())
+}
+
 func main() {
-	files, err := ioutil.ReadDir("in")
-	if err != nil {
-		fmt.Println("Error reading 'in' directory:", err)
-		os.Exit(1)
-	}
 
-	var fullCode strings.Builder
-	fullCode.WriteString("package main\n\n")
+	inputFiles := ReadInputFiles() // from the /in folder, in .json format
 
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".json" {
-			jsonFile := filepath.Join("in", file.Name())
-			structName := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+	var generatedCode strings.Builder
+	generatedCode.WriteString("package main\n\n")
 
-			fields, err := ReadJSONAndPreserveOrder(jsonFile)
-			if err != nil {
-				fmt.Printf("Error reading JSON file %s: %s\n", jsonFile, err)
-				continue // Skip to the next file
-			}
+	for _, inputFile := range inputFiles {
 
-			structCode := GenerateStruct(fields, structName)
-			fullCode.WriteString(structCode + "\n\n")
+		if filepath.Ext(inputFile.Name()) != ".json" {
+			continue
 		}
+
+		jsonFile, err := os.Open(GetFilePath(inputFile)) // "in/TestModel.json"
+		if err != nil {
+			fmt.Printf("Error opening JSON file %s: %s\n", GetFilePath(inputFile), err)
+			continue // next file
+		}
+		defer jsonFile.Close()
+
+		structFields, err := FromJSONFileToStructFields(jsonFile)
+		if err != nil {
+			fmt.Printf("Error reading JSON file %s: %s\n", GetFilePath(inputFile), err)
+			continue // next file
+		}
+
+		modelName := strings.TrimSuffix(inputFile.Name(), filepath.Ext(inputFile.Name())) // "TestModel"
+		structGeneratedCode := GenerateStruct(structFields, modelName)
+
+		generatedCode.WriteString(structGeneratedCode + "\n\n")
 	}
 
-	outputFile := "out/out.go"
-	if err := WriteToFile(outputFile, fullCode.String()); err != nil {
-		fmt.Println("Error writing to", outputFile, ":", err)
-		os.Exit(1)
-	}
+	WriteOutputFile(generatedCode)
 
-	fmt.Println("Structs successfully written to", outputFile)
+	fmt.Println("Code successfully written to ", outputFilename)
 }
