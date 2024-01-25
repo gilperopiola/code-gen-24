@@ -4,124 +4,112 @@ import (
 	"bufio"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// StructField examples: { "Name": "ID", "Type": "int" } - { "Name": "Username", "Type": "string" }
 type StructField struct {
 	Name string
 	Type string
 }
 
-// processJSONLine input example: "ID": "int",
 func processJSONLine(line string) (string, string) {
 	line = strings.Trim(line, " ,{}")
-
 	if len(line) < 3 {
 		return "", "" // not a valid line
 	}
-
 	parts := strings.Split(line, ":")
 	if len(parts) != 2 {
 		return "", "" // not a valid line
 	}
-
 	return strings.Trim(parts[0], " \""), strings.Trim(parts[1], " \"")
 }
 
-// FromJSONFileToStructFields reads a JSON file and returns an ordered list of StructFields
-func FromJSONFileToStructFields(file *os.File) ([]StructField, error) {
-	var fields []StructField
+func FromJSONFileToStructFields(file fs.File) ([]StructField, error) {
 	scanner := bufio.NewScanner(file)
-
+	var fields []StructField
 	for scanner.Scan() {
 		fieldName, fieldType := processJSONLine(scanner.Text())
 		fields = append(fields, StructField{Name: fieldName, Type: fieldType})
 	}
+	return fields, scanner.Err()
+}
 
-	if err := scanner.Err(); err != nil {
+func GenerateStruct(fields []StructField, structName string) string {
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("type %s struct {\n", structName))
+	for _, field := range fields {
+		builder.WriteString(fmt.Sprintf("    %s %s\n", field.Name, field.Type))
+	}
+	builder.WriteString("}")
+	return builder.String()
+}
+
+func WriteToFile(filename, content string) error {
+	return os.WriteFile(filename, []byte(content), 0644)
+}
+
+func ReadInputFiles(dir string) ([]fs.DirEntry, error) {
+	files, err := os.ReadDir(dir)
+	if err != nil {
 		return nil, err
 	}
-
-	return fields, nil
+	return files, nil
 }
 
-// GenerateStruct generates Go struct code from a slice of StructField
-func GenerateStruct(fields []StructField, structName string) string {
-	var structFields []string
+func GetFilePath(dir, fileName string) string {
+	return filepath.Join(dir, fileName)
+}
 
-	for _, field := range fields {
-		structFields = append(structFields, fmt.Sprintf("    %s %s", field.Name, field.Type))
+func GenerateStructCodeFromFile(filePath string) (string, error) {
+	jsonFile, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("error opening JSON file %s: %w", filePath, err)
+	}
+	defer jsonFile.Close()
+
+	structFields, err := FromJSONFileToStructFields(jsonFile)
+	if err != nil {
+		return "", fmt.Errorf("error reading JSON file %s: %w", filePath, err)
 	}
 
-	return fmt.Sprintf("type %s struct {\n%s\n}", structName, strings.Join(structFields, "\n"))
+	structName := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
+	return GenerateStruct(structFields, structName), nil
 }
 
-// WriteToFile writes the generated struct to a file
-func WriteToFile(filename, content string) error {
-	return ioutil.WriteFile(filename, []byte(content), 0644)
-}
-
-func ReadInputFiles() []os.DirEntry {
-	if files, err := os.ReadDir("in"); err == nil {
-		return files
-	}
-
-	os.Exit(1)
-	return nil
-}
-
-const (
-	outputFilename = "out/out.go"
-)
-
-func WriteOutputFile(generatedCode strings.Builder) {
-	if err := WriteToFile(outputFilename, generatedCode.String()); err != nil {
-		fmt.Println("Error writing to ", outputFilename, ":", err)
-		os.Exit(1)
-	}
-}
-
-func GetFilePath(inputFile fs.DirEntry) string {
-	return filepath.Join("in", inputFile.Name())
-}
+const inputDir = "in"
+const outputFilename = "out/out.go"
 
 func main() {
-
-	inputFiles := ReadInputFiles() // from the /in folder, in .json format
+	inputFiles, err := ReadInputFiles(inputDir)
+	if err != nil {
+		fmt.Printf("Error reading input files: %v\n", err)
+		return
+	}
 
 	var generatedCode strings.Builder
 	generatedCode.WriteString("package main\n\n")
 
 	for _, inputFile := range inputFiles {
-
 		if filepath.Ext(inputFile.Name()) != ".json" {
 			continue
 		}
 
-		jsonFile, err := os.Open(GetFilePath(inputFile)) // "in/TestModel.json"
+		filePath := GetFilePath(inputDir, inputFile.Name())
+		generatedStructCode, err := GenerateStructCodeFromFile(filePath)
 		if err != nil {
-			fmt.Printf("Error opening JSON file %s: %s\n", GetFilePath(inputFile), err)
-			continue // next file
-		}
-		defer jsonFile.Close()
-
-		structFields, err := FromJSONFileToStructFields(jsonFile)
-		if err != nil {
-			fmt.Printf("Error reading JSON file %s: %s\n", GetFilePath(inputFile), err)
-			continue // next file
+			fmt.Printf("Error generating struct from file %s: %v\n", filePath, err)
+			continue
 		}
 
-		modelName := strings.TrimSuffix(inputFile.Name(), filepath.Ext(inputFile.Name())) // "TestModel"
-		structGeneratedCode := GenerateStruct(structFields, modelName)
-
-		generatedCode.WriteString(structGeneratedCode + "\n\n")
+		generatedCode.WriteString(generatedStructCode + "\n\n")
 	}
 
-	WriteOutputFile(generatedCode)
+	if err := WriteToFile(outputFilename, generatedCode.String()); err != nil {
+		fmt.Printf("Error writing to %s: %v\n", outputFilename, err)
+		return
+	}
 
-	fmt.Println("Code successfully written to ", outputFilename)
+	fmt.Printf("Code successfully written to %s\n", outputFilename)
 }
