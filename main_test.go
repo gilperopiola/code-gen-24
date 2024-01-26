@@ -7,6 +7,6 @@ import (
 )
 
 func TestAsd(t *testing.T) {
-	a := GenerateStruct([]StructField{{Name: "A", Type: "int"}, {Name: "B", Type: "string"}}, "TestModel")
+	a := generateStructCodeFromFields([]StructField{{Name: "A", Type: "int"}, {Name: "B", Type: "string"}}, "TestModel")
 	assert.NotEqual(t, "", a)
 }
