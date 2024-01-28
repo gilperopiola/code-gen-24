@@ -27,10 +27,9 @@ const (
 )
 
 func main() {
+	structCodeGenerator := generators.NewStructCodeGenerator("")
 
-	structCodeGen := generators.NewStructCodeGenerator("")
-
-	if err := GenerateCode(structCodeGen); err != nil {
+	if err := GenerateCode(structCodeGenerator); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -53,37 +52,40 @@ func GenerateCode(generator generators.CodeGenerator) error {
 	for _, inputFile := range inputFiles {
 		fileName := inputFile.Name()
 
-		if !strings.Contains(fileName, ".json") {
+		if !strings.HasSuffix(fileName, ".json") {
 			continue
 		}
 
-		generator.SetSource(inputDir + "/" + fileName)
-
-		if err := generator.Read(); err != nil {
-			if !shouldStopOnErr {
-				fmt.Print(err)
-				continue
+		if err := processFile(fileName, generator, &code); err != nil {
+			if shouldStopOnErr {
+				return err
 			}
-			return err
+			fmt.Printf("error processing file %s: %v", fileName, err)
 		}
-
-		if err := generator.Generate(); err != nil {
-			if !shouldStopOnErr {
-				fmt.Print(err)
-				continue
-			}
-			return err
-		}
-
-		code.WriteString(generator.GetOutput() + "\n\n")
-
-		generator.Clear()
 	}
 
 	/* out */
 	if err := os.WriteFile(outputFilename, []byte(code.String()), 0644); err != nil {
 		return core.ErrWritingOutput(outputFilename, err)
 	}
+
+	return nil
+}
+
+func processFile(fileName string, generator generators.CodeGenerator, code *strings.Builder) error {
+	generator.SetSource(inputDir + "/" + fileName)
+
+	if err := generator.Read(); err != nil {
+		return err
+	}
+
+	if err := generator.Generate(); err != nil {
+		return err
+	}
+
+	code.WriteString(generator.GetOutput() + "\n\n")
+
+	generator.Clear()
 
 	return nil
 }
