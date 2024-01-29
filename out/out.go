@@ -10,3 +10,8 @@ type UserModel struct {
 	Username string
 	IsAdmin  bool
 }
+
+type test struct {
+	name string
+	age  int
+}

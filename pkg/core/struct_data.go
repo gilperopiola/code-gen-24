@@ -26,7 +26,5 @@ func (structData StructData) GenerateCode() string {
 }
 
 var (
-	ErrEmptyStructData = func(fileName string) error {
-		return fmt.Errorf("error generating struct from file %s: empty struct data", fileName)
-	}
+	ErrEmptyStructData = fmt.Errorf("error generating struct: empty struct data")
 )

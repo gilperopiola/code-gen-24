@@ -26,8 +26,6 @@ const (
 	inputDir       = "in"
 	outputDir      = "out"
 	outputFilename = outputDir + "/out.go"
-
-	shouldStopOnErr = false
 )
 
 type Orchestrator struct {
@@ -35,39 +33,13 @@ type Orchestrator struct {
 	FileReader          core.FileReaderI
 }
 
-func (o *Orchestrator) GenerateCode() error {
-	if err := o.FileReader.ReadInputFolder(); err != nil {
-		return err
-	}
-
-	for _, structData := range o.FileReader.GetParsedStructData() {
-		o.StructCodeGenerator.SetSource(structData.GenerateCode())
-
-		if err := o.StructCodeGenerator.Read(); err != nil {
-			return err
-		}
-
-		if err := o.StructCodeGenerator.Generate(); err != nil {
-			return err
-		}
-
-		if err := o.StructCodeGenerator.Write(); err != nil {
-			return err
-		}
-
-		o.StructCodeGenerator.Clear()
-	}
-
-	return nil
-}
-
 func main() {
 	orchestrator := Orchestrator{
-		StructCodeGenerator: generators.NewStructCodeGenerator(""),
+		StructCodeGenerator: generators.NewStructCodeGenerator(),
 		FileReader:          core.NewFileReader(inputDir),
 	}
 
-	if err := GenerateCode(structCodeGenerator); err != nil {
+	if err := orchestrator.GenerateCode(); err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
@@ -75,55 +47,31 @@ func main() {
 	log.Printf("code successfully written to %s", outputFilename)
 }
 
-func GenerateCode(generator generators.CodeGenerator) error {
+func (o *Orchestrator) GenerateCode() error {
 
 	/* in */
-	inputFiles, err := os.ReadDir(inputDir)
-	if err != nil {
-		return core.ErrReadingInputFiles(err)
+	if err := o.FileReader.ReadInputFolder(); err != nil {
+		return err
 	}
 
-	/* process */
 	var code strings.Builder
 	code.WriteString("package main\n\n")
 
-	for _, inputFile := range inputFiles {
-		fileName := inputFile.Name()
+	for _, generableData := range o.FileReader.GetParsedStructData() {
 
-		if !strings.HasSuffix(fileName, ".json") {
-			continue
+		o.StructCodeGenerator.SetData(generableData)
+		generatedCode, err := o.StructCodeGenerator.GenerateOutput()
+		if err != nil {
+			return err
 		}
 
-		if err := processFile(fileName, generator, &code); err != nil {
-			if shouldStopOnErr {
-				return err
-			}
-			log.Printf("error processing file %s: %v", fileName, err)
-		}
+		code.WriteString(generatedCode + "\n\n")
 	}
 
 	/* out */
 	if err := os.WriteFile(outputFilename, []byte(code.String()), 0644); err != nil {
 		return core.ErrWritingOutput(outputFilename, err)
 	}
-
-	return nil
-}
-
-func processFile(fileName string, generator generators.CodeGenerator, code *strings.Builder) error {
-	generator.SetSource(inputDir + "/" + fileName)
-
-	if err := generator.Read(); err != nil {
-		return err
-	}
-
-	if err := generator.Generate(); err != nil {
-		return err
-	}
-
-	code.WriteString(generator.GetOutput() + "\n\n")
-
-	generator.Clear()
 
 	return nil
 }

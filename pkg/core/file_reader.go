@@ -47,6 +47,8 @@ func (f *FileReader) ReadInputFolder() error {
 	f.loadFilenames()
 
 	for _, fileName := range f.inputFilenames {
+		fileName = f.inputFolderPath + "/" + fileName
+
 		f.parsedStructData[fileName] = StructData{
 			Name:   strings.TrimSuffix(filepath.Base(fileName), filepath.Ext(fileName)),
 			Fields: []StructField{},
