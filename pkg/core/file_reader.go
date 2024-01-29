@@ -9,46 +9,31 @@ import (
 )
 
 type FileReaderI interface {
-	SetInputFolder(inputFolder string)
-	ReadInputFolder() error
-	GetParsedStructData() []Generable
+	ParseFolder() error
+	GetParsedData() []Generable
 }
 
-type FileReader struct {
+type InputFileReader struct {
 	inputFolderPath string
 	inputFilenames  []string
 
 	parsedStructData map[string]StructData
 }
 
-func NewFileReader(inputFolderPath string) *FileReader {
-	return &FileReader{
-		inputFolderPath:  inputFolderPath,
-		inputFilenames:   []string{},
+func NewFileReader(inputFolderPath string) *InputFileReader {
+	return &InputFileReader{
+		inputFolderPath: inputFolderPath,
+		inputFilenames:  []string{},
+
 		parsedStructData: make(map[string]StructData),
 	}
 }
 
-func (f *FileReader) SetInputFolder(inputFolderPath string) {
-	f.inputFolderPath = inputFolderPath
-}
+func (f *InputFileReader) ParseFolder() error {
 
-func (f *FileReader) GetParsedStructData() []Generable {
-	var parsedStructData []Generable
-
-	for _, structData := range f.parsedStructData {
-		parsedStructData = append(parsedStructData, structData)
-	}
-
-	return parsedStructData
-}
-
-func (f *FileReader) ReadInputFolder() error {
-	f.loadFilenames()
+	f.loadInputFolderFilenames()
 
 	for _, fileName := range f.inputFilenames {
-		fileName = f.inputFolderPath + "/" + fileName
-
 		f.parsedStructData[fileName] = StructData{
 			Name:   strings.TrimSuffix(filepath.Base(fileName), filepath.Ext(fileName)),
 			Fields: []StructField{},
@@ -67,7 +52,17 @@ func (f *FileReader) ReadInputFolder() error {
 	return nil
 }
 
-func (f *FileReader) parseIntoStructFields(jsonFile *os.File, fileName string) {
+func (f *InputFileReader) GetParsedData() []Generable {
+	var parsedStructData []Generable
+
+	for _, structData := range f.parsedStructData {
+		parsedStructData = append(parsedStructData, structData)
+	}
+
+	return parsedStructData
+}
+
+func (f *InputFileReader) parseIntoStructFields(jsonFile *os.File, fileName string) {
 	scanner := bufio.NewScanner(jsonFile)
 
 	for scanner.Scan() {
@@ -93,7 +88,7 @@ func (f *FileReader) parseIntoStructFields(jsonFile *os.File, fileName string) {
 	}
 }
 
-func (f *FileReader) parseJSONLineIntoStructField(line string) (StructField, error) {
+func (f *InputFileReader) parseJSONLineIntoStructField(line string) (StructField, error) {
 	line = strings.Trim(line, " ,{}")
 
 	if len(strings.Trim(line, " ")) < 4 {
@@ -111,24 +106,21 @@ func (f *FileReader) parseJSONLineIntoStructField(line string) (StructField, err
 	}, nil
 }
 
-func (f *FileReader) loadFilenames() {
+func (f *InputFileReader) loadInputFolderFilenames() {
+
 	inputFolderFiles, err := os.ReadDir(f.inputFolderPath)
 	if err != nil {
 		fmt.Println(ErrReadingInputFiles(err))
 		return
 	}
 
-	var fileNames []string
-
 	for _, inputFile := range inputFolderFiles {
-		fileName := inputFile.Name()
+		fileName := f.inputFolderPath + "/" + inputFile.Name()
 
 		if !strings.HasSuffix(fileName, ".json") {
 			continue
 		}
 
-		fileNames = append(fileNames, fileName)
+		f.inputFilenames = append(f.inputFilenames, fileName)
 	}
-
-	f.inputFilenames = fileNames
 }
