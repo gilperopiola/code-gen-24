@@ -7,8 +7,8 @@ import (
 )
 
 type Orchestrator struct {
-	FileReader core.FileReaderI
-	FileWriter core.FileWriterI
+	FileReader core.FileReader
+	FileWriter core.FileWriter
 }
 
 func (o *Orchestrator) GenerateCode() error {

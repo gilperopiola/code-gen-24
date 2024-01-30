@@ -6,7 +6,7 @@ import (
 )
 
 func TestFileWriterWrite(t *testing.T) {
-	if err := NewFileWriter().Write("test", "test.txt"); err != nil {
+	if err := NewStructFileWriter().Write("test", "test.txt"); err != nil {
 		t.Errorf("expected no error, got %v", err)
 	} else {
 		os.Remove("test.txt")

@@ -1,12 +1,6 @@
 package core
 
-import (
-	"fmt"
-)
-
-type Generable interface {
-	GenerateCode() string
-}
+import "fmt"
 
 var (
 	ErrReadingInputFiles = func(err error) error {

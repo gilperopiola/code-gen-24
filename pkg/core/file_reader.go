@@ -6,29 +6,29 @@ import (
 	"strings"
 )
 
-type FileReaderI interface {
+/* FileReader Interface */
+
+type FileReader interface {
 	ParseFiles() error
-	GetParsedData() []Generable
+	GetParsedData() []CodeGenerator
 }
 
-type StructFileReader struct {
-	inputFolderPath string
-	inputFilenames  []string
+/* Struct File Reader */
 
+type StructFileReader struct {
+	inputFolderPath  string
 	parsedStructData []StructData
 }
 
 func NewStructFileReader(inputFolderPath string) *StructFileReader {
 	return &StructFileReader{
-		inputFolderPath: inputFolderPath,
-		inputFilenames:  []string{},
-
+		inputFolderPath:  inputFolderPath,
 		parsedStructData: []StructData{},
 	}
 }
 
-func (f *StructFileReader) GetParsedData() []Generable {
-	var out []Generable
+func (f *StructFileReader) GetParsedData() []CodeGenerator {
+	var out []CodeGenerator
 	for _, structData := range f.parsedStructData {
 		out = append(out, structData)
 	}
@@ -47,7 +47,7 @@ func (f *StructFileReader) ParseFiles() error {
 			return ErrOpeningJSONFile(fileName, err)
 		}
 
-		f.parsedStructData = append(f.parsedStructData, f.parseJSONFileIntoStructData(jsonFile, fileName))
+		f.parsedStructData = append(f.parsedStructData, f.parseIntoStructData(jsonFile))
 
 		jsonFile.Close()
 	}
@@ -55,21 +55,21 @@ func (f *StructFileReader) ParseFiles() error {
 	return nil
 }
 
-func (f *StructFileReader) parseJSONFileIntoStructData(jsonFile *os.File, fileName string) StructData {
+func (f *StructFileReader) parseIntoStructData(jsonFile *os.File) StructData {
 	return StructData{
-		Name:   strings.TrimSuffix(fileName, ".json"),
-		Fields: f.parseJSONFileIntoStructFields(jsonFile),
+		Name:   strings.TrimPrefix(strings.TrimSuffix(jsonFile.Name(), ".json"), f.inputFolderPath+"/"),
+		Fields: f.parseIntoStructFields(jsonFile),
 	}
 }
 
-func (f *StructFileReader) parseJSONFileIntoStructFields(jsonFile *os.File) []StructField {
+func (f *StructFileReader) parseIntoStructFields(jsonFile *os.File) []StructField {
 	var (
 		out     = []StructField{}
 		scanner = bufio.NewScanner(jsonFile)
 	)
 
 	for scanner.Scan() {
-		if structField, err := f.parseJSONLineIntoStructField(scanner.Text()); err == nil {
+		if structField, err := f.parseIntoStructField(scanner.Text()); err == nil {
 			out = append(out, structField)
 		}
 		continue
@@ -78,8 +78,7 @@ func (f *StructFileReader) parseJSONFileIntoStructFields(jsonFile *os.File) []St
 	return out
 }
 
-func (f *StructFileReader) parseJSONLineIntoStructField(line string) (StructField, error) {
-
+func (f *StructFileReader) parseIntoStructField(line string) (StructField, error) {
 	// Remove commas, spaces, and brackets
 	line = strings.Trim(line, " ,{}")
 
@@ -103,6 +102,8 @@ func (f *StructFileReader) parseJSONLineIntoStructField(line string) (StructFiel
 }
 
 func (f *StructFileReader) getInputFolderFilenames() ([]string, error) {
+	var out []string
+
 	inputFiles, err := os.ReadDir(f.inputFolderPath)
 	if err != nil {
 		return nil, ErrReadingInputFiles(err)
@@ -110,9 +111,9 @@ func (f *StructFileReader) getInputFolderFilenames() ([]string, error) {
 
 	for _, inputFile := range inputFiles {
 		if strings.HasSuffix(inputFile.Name(), ".json") {
-			f.inputFilenames = append(f.inputFilenames, f.inputFolderPath+"/"+inputFile.Name())
+			out = append(out, f.inputFolderPath+"/"+inputFile.Name())
 		}
 	}
 
-	return f.inputFilenames, nil
+	return out, nil
 }
