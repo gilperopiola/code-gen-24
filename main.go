@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/gilperopiola/code-gen-24/pkg/core"
-	"github.com/gilperopiola/code-gen-24/pkg/generators"
 )
 
 /* Finish this:
@@ -29,10 +28,8 @@ const (
 
 func main() {
 	orchestrator := Orchestrator{
-		FileReader: core.NewFileReader(inputDir),
+		FileReader: core.NewStructFileReader(inputDir),
 		FileWriter: core.NewFileWriter(),
-
-		StructCodeGenerator: generators.NewStructCodeGenerator(),
 	}
 
 	if err := orchestrator.GenerateCode(); err != nil {

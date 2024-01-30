@@ -6,8 +6,7 @@ type FileWriterI interface {
 	Write(content, fileName string) error
 }
 
-type FileWriter struct {
-}
+type FileWriter struct{}
 
 func NewFileWriter() *FileWriter {
 	return &FileWriter{}
