@@ -13,6 +13,8 @@ const (
 	outputFilename = outputDir + "/out.go"
 )
 
+/* Hey there :) */
+
 func main() {
 	orchestrator := Orchestrator{
 		FileReader: core.NewStructFileReader(inputDir),
@@ -26,3 +28,5 @@ func main() {
 
 	log.Printf("code successfully written to %s", outputFilename)
 }
+
+/* Bye there :) */

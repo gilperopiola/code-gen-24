@@ -6,6 +6,10 @@ func TestStructFileReaderParseFolder(t *testing.T) {
 	if err := NewStructFileReader("../../in").ParseFiles(); err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
+
+	if err := NewStructFileReader("nonexistent").ParseFiles(); err == nil {
+		t.Errorf("expected error, got nil")
+	}
 }
 
 func TestStructFileReaderGetParsedData(t *testing.T) {

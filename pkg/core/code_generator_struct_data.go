@@ -5,16 +5,19 @@ import (
 	"strings"
 )
 
+// StructData represents the data for a Golang struct
 type StructData struct {
 	Name   string
 	Fields []StructField
 }
 
+// StructField represents a field in a Golang struct. Name & Type for now
 type StructField struct {
 	Name string
 	Type string
 }
 
+// GenerateCode returns the generated code for the struct as a string
 func (structData StructData) GenerateCode() string {
 
 	var (
@@ -22,7 +25,7 @@ func (structData StructData) GenerateCode() string {
 
 		firstLine = "type %s struct {\n"
 		fieldLine = "    %s %s\n"
-		lastLine  = "}"
+		lastLine  = "}\n"
 	)
 
 	b.WriteString(fmt.Sprintf(firstLine, structData.Name))
