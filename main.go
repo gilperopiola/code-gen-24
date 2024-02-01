@@ -4,29 +4,50 @@ import (
 	"log"
 	"os"
 
-	"github.com/gilperopiola/code-gen-24/pkg/core"
+	"github.com/gilperopiola/code-gen-24/pkg"
 )
 
 const (
-	inputDir       = "in"
-	outputDir      = "out"
-	outputFilename = outputDir + "/out.go"
+	defaultInputDir  = "in"
+	defaultOutputDir = "out"
 )
 
 /* Hey there :) */
 
 func main() {
-	orchestrator := Orchestrator{
-		FileReader: core.NewStructFileReader(inputDir),
-		FileWriter: core.NewStructFileWriter(),
+
+	// Get input & output directories
+	inputDir := getConfig("INPUT_DIR", defaultInputDir)
+	outputDir := getConfig("OUTPUT_DIR", defaultOutputDir)
+
+	// Output will be written to this file
+	outputFilename := outputDir + "/out.go"
+
+	orchestrator := NewOrchestrator(
+		pkg.NewStructFileReader(inputDir),
+		pkg.NewStructFileWriter(),
+		outputFilename,
+	)
+
+	// Run program
+	log.Println("3... 2... 1...")
+	log.Println("Starting code generation process!")
+
+	if err := orchestrator.Run(); err != nil {
+		log.Fatalf("): Code generation process failed: %v", err)
 	}
 
-	if err := orchestrator.GenerateCode(); err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
-
-	log.Printf("code successfully written to %s", outputFilename)
+	log.Println("Code successfully written to...")
+	log.Println(" - " + outputFilename)
+	log.Println("<3")
 }
 
-/* Bye there :) */
+// getConfig retrieves the environment variable or returns a default value
+func getConfig(envKey, defaultValue string) string {
+	if value, exists := os.LookupEnv(envKey); exists {
+		return value
+	}
+	return defaultValue
+}
+
+/* Bye there (: */
