@@ -18,41 +18,53 @@ type StructField struct {
 	Type string
 }
 
-// ParseData takes the file contents as input and parses it into the object
+// ParseData takes a JSON file contents as input and parses it into the object
 func (structData *StructData) ParseData(jsonData []byte) error {
 	decoder := json.NewDecoder(strings.NewReader(string(jsonData)))
 
-	_, err := decoder.Token()
-	if err != nil {
+	if _, err := decoder.Token(); err != nil {
 		return err
 	}
 
 	// Go through each JSON line
 	for decoder.More() {
-		var token json.Token
-
-		// Field Name
-		if token, err = decoder.Token(); err != nil {
+		structField, err := parseNextStructField(decoder)
+		if err != nil {
 			return err
 		}
-		fieldName, ok := token.(string)
-		if !ok {
-			return fmt.Errorf("expected struct field name as a string")
-		}
 
-		// Field Type
-		if token, err = decoder.Token(); err != nil {
-			return err
-		}
-		fieldType, ok := token.(string)
-		if !ok {
-			return fmt.Errorf("expected struct field type as a string")
-		}
-
-		structData.Fields = append(structData.Fields, StructField{Name: fieldName, Type: fieldType})
+		structData.Fields = append(structData.Fields, structField)
 	}
 
 	return nil
+}
+
+// parseNextStructField gets 2 tokens from the decoder, the field name and type
+func parseNextStructField(decoder *json.Decoder) (StructField, error) {
+	var (
+		err   error
+		out   StructField
+		token json.Token
+		ok    bool
+	)
+
+	// Field Name
+	if token, err = decoder.Token(); err != nil {
+		return StructField{}, fmt.Errorf("error reading field name: %w", err)
+	}
+	if out.Name, ok = token.(string); !ok {
+		return StructField{}, fmt.Errorf("expected struct field name as a string")
+	}
+
+	// Field Type
+	if token, err = decoder.Token(); err != nil {
+		return StructField{}, fmt.Errorf("error reading field type: %w", err)
+	}
+	if out.Type, ok = token.(string); !ok {
+		return StructField{}, fmt.Errorf("expected struct field type as a string")
+	}
+
+	return out, nil
 }
 
 // GenerateCode returns the generated code for the struct as a string
